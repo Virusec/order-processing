@@ -9,3 +9,8 @@ kafka:
     concurrency: ${KAFKA_CONCURRENCY:3}
 server:
   port: 8082
+
+dlt:
+  replay:
+    enabled: false
+    max-retries: 3

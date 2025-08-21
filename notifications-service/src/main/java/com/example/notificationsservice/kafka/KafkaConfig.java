@@ -38,7 +38,7 @@ public class KafkaConfig {
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory(
             ConsumerFactory<String, String> cf,
-            @Value("${kafka.listener.concurrency:3}") Integer concurrency,
+            @Value("${kafka.listener.concurrency:4}") Integer concurrency,
             DefaultErrorHandler errorHandler
     ) {
         ConcurrentKafkaListenerContainerFactory<String, String> factory = new ConcurrentKafkaListenerContainerFactory<>();

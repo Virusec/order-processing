@@ -1,7 +1,10 @@
 package com.example.paymentservice.kafka;
 
 import com.example.common.kafka.Topics;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -14,10 +17,14 @@ import org.springframework.util.backoff.ExponentialBackOff;
  */
 @Configuration
 public class ErrorHandlingConfig {
+    private static final Logger log = LoggerFactory.getLogger(ErrorHandlingConfig.class);
+
     @Bean
     public DefaultErrorHandler errorHandler(KafkaTemplate<String, String> template) {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template, (record, exception) -> {
             String topic = record.topic();
+            log.error("DLT publish: topic={} partition={} offset={} key={} cause={}",
+                    topic, record.partition(), record.offset(), record.key(), record.toString());
             return switch (topic) {
                 case Topics.NEW_ORDERS -> new TopicPartition(Topics.NEW_ORDERS_DLT, record.partition());
                 case Topics.PAYED_ORDERS -> new TopicPartition(Topics.PAYED_ORDERS_DLT, record.partition());
@@ -30,6 +37,11 @@ public class ErrorHandlingConfig {
         DefaultErrorHandler handler = new DefaultErrorHandler(recoverer, backOff);
         handler.setAckAfterHandle(true);
         handler.setCommitRecovered(true);
+        handler.addNotRetryableExceptions(IllegalArgumentException.class, JsonProcessingException.class);
+
+        handler.setRetryListeners((record, exception, deliveryAttempt) ->
+                log.warn("Retry {}/? for topic={} partition={} offset={} key={}, reason={}",
+                        deliveryAttempt, record.topic(), record.partition(), record.offset(), record.key(), exception.toString()));
         return handler;
     }
 }
