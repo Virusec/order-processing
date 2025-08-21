@@ -1,0 +1,10 @@
+spring:
+  application:
+    name: orders-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+
+kafka:
+  partitions: ${KAFKA_PARTITIONS:6}
+server:
+  port: 8081

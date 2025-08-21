@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: notifications-service
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+
+kafka:
+  listener:
+    concurrency: ${KAFKA_CONCURRENCY:3}
+server:
+  port: 8084
