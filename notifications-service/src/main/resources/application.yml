@@ -3,9 +3,10 @@ spring:
     name: notifications-service
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
-
+    consumer:
+      enable-auto-commit: false
 kafka:
   listener:
-    concurrency: ${KAFKA_CONCURRENCY:3}
+    concurrency: ${KAFKA_CONCURRENCY:4}
 server:
   port: 8084

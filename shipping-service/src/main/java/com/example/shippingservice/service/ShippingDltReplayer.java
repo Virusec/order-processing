@@ -2,7 +2,9 @@ package com.example.shippingservice.service;
 
 import com.example.common.kafka.Topics;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Header;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,24 +36,25 @@ public class ShippingDltReplayer {
             autoStartup = "${dlt.replay.enabled:false}",
             containerFactory = "kafkaListenerContainerFactory")
     public void replayPayed(ConsumerRecord<String, String> record, Acknowledgment ack) {
-        int current = headerInt(record, RETRY_HDR, 0);
+        int current = currentRetry(record);
         if (current >= maxRetries) {
             log.warn("DLT drop(shipping) key={} p={} off={}", record.key(), record.partition(), record.offset());
             ack.acknowledge();
             return;
         }
-        log.info("DLT replay(shipping) key={} attempt={} -> {}", record.key(), current + 1, Topics.PAYED_ORDERS);
-        template.send(Topics.PAYED_ORDERS, record.key(), record.value());
+        int next = current + 1;
+        log.info("DLT replay(shipping) key={} attempt={} -> {}", record.key(), next, Topics.PAYED_ORDERS);
+        ProducerRecord<String, String> out = new ProducerRecord<>(Topics.PAYED_ORDERS, record.key(), record.value());
+        out.headers().remove(RETRY_HDR);
+        out.headers().add(new RecordHeader(RETRY_HDR, Integer.toString(next).getBytes(StandardCharsets.UTF_8)));
+        template.send(out);
         ack.acknowledge();
     }
 
-    private int headerInt(ConsumerRecord<String, String> record, String name, int def) {
-        Header header = record.headers().lastHeader(name);
-        if (header == null) return def;
-        try {
-            return Integer.parseInt(new String(header.value(), StandardCharsets.UTF_8));
-        } catch (Exception ignore) {
-            return def;
-        }
+    private int currentRetry(ConsumerRecord<String, String> record) {
+        Header header = record.headers().lastHeader(RETRY_HDR);
+        if (header == null) return 0;
+        try { return Integer.parseInt(new String(header.value(), StandardCharsets.UTF_8)); }
+        catch (Exception ignore) { return 0; }
     }
 }

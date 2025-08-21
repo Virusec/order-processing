@@ -24,7 +24,7 @@ public class ErrorHandlingConfig {
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(template, (record, exception) -> {
             String topic = record.topic();
             log.error("DLT publish: topic={} partition={} offset={} key={} cause={}",
-                    topic, record.partition(), record.offset(), record.key(), record.toString());
+                    topic, record.partition(), record.offset(), record.key(), exception.toString());
             return switch (topic) {
                 case Topics.NEW_ORDERS -> new TopicPartition(Topics.NEW_ORDERS_DLT, record.partition());
                 case Topics.PAYED_ORDERS -> new TopicPartition(Topics.PAYED_ORDERS_DLT, record.partition());

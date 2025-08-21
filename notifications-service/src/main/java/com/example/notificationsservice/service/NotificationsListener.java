@@ -8,7 +8,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 
 /**
@@ -18,13 +20,16 @@ import org.springframework.stereotype.Service;
 public class NotificationsListener {
     private final ObjectMapper objectMapper;
     private static final Logger log = LoggerFactory.getLogger(NotificationsListener.class);
+    private final boolean autoCommit;
 
-    public NotificationsListener(ObjectMapper objectMapper) {
+    public NotificationsListener(ObjectMapper objectMapper,
+                                 @Value("${spring.kafka.consumer.enable-auto-commit:false}") boolean autoCommit) {
         this.objectMapper = objectMapper;
+        this.autoCommit = autoCommit;
     }
 
     @KafkaListener(topics = Topics.SENT_ORDERS, containerFactory = "kafkaListenerContainerFactory")
-    public void onSent(ConsumerRecord<String, String> record) {
+    public void onSent(ConsumerRecord<String, String> record, Acknowledgment ack) {
         final OrderEvent event;
         try {
             event = objectMapper.readValue(record.value(), OrderEvent.class);
@@ -35,6 +40,9 @@ public class NotificationsListener {
             log.info("[NOTIFY] orderId={} userId={} delivered", event.orderId(), event.userId());
         } else {
             log.debug("Skip notify orderId={} status={}", event.orderId(), event.status());
+        }
+        if (!autoCommit && ack != null) {
+            ack.acknowledge();
         }
     }
 }
